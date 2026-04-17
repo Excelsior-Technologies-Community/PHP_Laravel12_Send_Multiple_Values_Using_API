@@ -42,3 +42,9 @@ Route::post('/product/update/{id}', [ProductController::class, 'update']); // PO
 
 // Delete a product
 Route::post('/product/delete/{id}', [ProductController::class, 'destroy']);
+
+// Filter products by color
+Route::post('/product/filter-by-color', [ProductController::class, 'filterByColor']);
+
+// Search products by name
+Route::post('/product/search', [ProductController::class, 'search']);
