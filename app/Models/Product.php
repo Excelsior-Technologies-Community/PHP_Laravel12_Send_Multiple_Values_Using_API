@@ -1,6 +1,5 @@
 <?php
 
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,9 +9,12 @@ class Product extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['product_name', 'price', 'color_id'];
-
-    
+    protected $fillable = [
+        'product_name', 
+        'price', 
+        'image', 
+        'color_id'
+    ];
 
     public function getColorNamesAttribute()
     {
@@ -22,4 +24,3 @@ class Product extends Model
         return \App\Models\Color::whereIn('id', $ids)->pluck('color_name');
     }
 }
-
