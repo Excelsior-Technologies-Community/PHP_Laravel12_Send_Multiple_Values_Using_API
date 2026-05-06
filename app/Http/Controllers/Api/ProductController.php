@@ -6,10 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Color;
 use Illuminate\Http\Request;
+use App\Http\Resources\ProductResource;
+use Illuminate\Support\Facades\File;
 
 class ProductController extends Controller
 {
-    // ================== LIST ALL PRODUCTS (WITH PAGINATION) ==================
     public function index()
     {
         $products = Product::orderBy('id', 'asc')->paginate(3);
@@ -17,48 +18,51 @@ class ProductController extends Controller
         return response()->json([
             'status' => true,
             'message' => 'Product list fetched successfully',
-            'data' => $products
+            'data' => ProductResource::collection($products)->response()->getData(true)
         ], 200);
     }
 
-    // ================== CREATE PRODUCT (AUTO-CREATE COLORS) ==================
     public function store(Request $request)
     {
         $request->validate([
             'product_name' => 'required|string',
             'price'        => 'required|integer',
             'color_name'   => 'required|string',
+            'image'        => 'nullable|image|mimes:jpg,png,jpeg,webp|max:2048',
         ]);
 
-        // Clean + remove duplicates + lowercase
+        $data = [
+            'product_name' => $request->product_name,
+            'price'        => $request->price,
+        ];
+
+        if ($request->hasFile('image')) {
+            $file = $request->file('image');
+            $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $file->move(public_path('uploads/products'), $filename);
+            $data['image'] = 'uploads/products/' . $filename;
+        }
+
         $colorNames = array_unique(
             array_map('strtolower', array_map('trim', explode(',', $request->color_name)))
         );
 
         $colorIds = [];
-
         foreach ($colorNames as $name) {
-            $color = Color::firstOrCreate([
-                'color_name' => $name
-            ]);
-
+            $color = Color::firstOrCreate(['color_name' => $name]);
             $colorIds[] = $color->id;
         }
 
-        $product = Product::create([
-            'product_name' => $request->product_name,
-            'price'        => $request->price,
-            'color_id'     => implode(',', $colorIds),
-        ]);
+        $data['color_id'] = implode(',', $colorIds);
+        $product = Product::create($data);
 
         return response()->json([
             'status' => true,
             'message' => 'Product created successfully',
-            'data' => $product
+            'data' => new ProductResource($product)
         ], 201);
     }
 
-    // ================== VIEW SINGLE PRODUCT ==================
     public function show($id)
     {
         $product = Product::find($id);
@@ -72,11 +76,10 @@ class ProductController extends Controller
 
         return response()->json([
             'status' => true,
-            'data' => $product
+            'data' => new ProductResource($product)
         ], 200);
     }
 
-    // ================== UPDATE PRODUCT ==================
     public function update(Request $request, $id)
     {
         $product = Product::find($id);
@@ -92,36 +95,45 @@ class ProductController extends Controller
             'product_name' => 'required|string',
             'price'        => 'required|integer',
             'color_name'   => 'required|string',
+            'image'        => 'nullable|image|mimes:jpg,png,jpeg,webp|max:2048',
         ]);
+
+        $data = [
+            'product_name' => $request->product_name,
+            'price'        => $request->price,
+        ];
+
+        if ($request->hasFile('image')) {
+            if ($product->image && File::exists(public_path($product->image))) {
+                File::delete(public_path($product->image));
+            }
+
+            $file = $request->file('image');
+            $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $file->move(public_path('uploads/products'), $filename);
+            $data['image'] = 'uploads/products/' . $filename;
+        }
 
         $colorNames = array_unique(
             array_map('strtolower', array_map('trim', explode(',', $request->color_name)))
         );
 
         $colorIds = [];
-
         foreach ($colorNames as $name) {
-            $color = Color::firstOrCreate([
-                'color_name' => $name
-            ]);
-
+            $color = Color::firstOrCreate(['color_name' => $name]);
             $colorIds[] = $color->id;
         }
 
-        $product->update([
-            'product_name' => $request->product_name,
-            'price'        => $request->price,
-            'color_id'     => implode(',', $colorIds),
-        ]);
+        $data['color_id'] = implode(',', $colorIds);
+        $product->update($data);
 
         return response()->json([
             'status' => true,
             'message' => 'Product updated successfully',
-            'data' => $product
+            'data' => new ProductResource($product)
         ], 200);
     }
 
-    // ================== DELETE PRODUCT ==================
     public function destroy($id)
     {
         $product = Product::find($id);
@@ -133,6 +145,10 @@ class ProductController extends Controller
             ], 404);
         }
 
+        if ($product->image && File::exists(public_path($product->image))) {
+            File::delete(public_path($product->image));
+        }
+
         $product->delete();
 
         return response()->json([
@@ -141,7 +157,6 @@ class ProductController extends Controller
         ], 200);
     }
 
-    // ================== FILTER BY COLOR ==================
     public function filterByColor(Request $request)
     {
         $request->validate([
@@ -169,11 +184,10 @@ class ProductController extends Controller
         return response()->json([
             'status' => true,
             'message' => 'Filtered products fetched successfully',
-            'data' => $products
+            'data' => ProductResource::collection($products)
         ], 200);
     }
 
-    // ================== SEARCH PRODUCT ==================
     public function search(Request $request)
     {
         $request->validate([
@@ -187,7 +201,7 @@ class ProductController extends Controller
         return response()->json([
             'status' => true,
             'message' => 'Search results',
-            'data' => $products
+            'data' => ProductResource::collection($products)->response()->getData(true)
         ], 200);
     }
 }
