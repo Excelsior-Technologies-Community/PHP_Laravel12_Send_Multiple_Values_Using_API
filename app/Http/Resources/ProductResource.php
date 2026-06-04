@@ -1,4 +1,5 @@
 <?php
+// app/Http/Resources/ProductResource.php
 
 namespace App\Http\Resources;
 
@@ -13,10 +14,12 @@ class ProductResource extends JsonResource
             'id' => $this->id,
             'product_name' => $this->product_name,
             'price' => $this->price,
-            'price_in_inr' => '₹' . number_format($this->price, 2),
             'image' => $this->image ? url($this->image) : null,
-            'colors' => $this->color_names,
-            'created_at' => $this->created_at->format('d-m-Y h:i A'),
+            'color_ids' => $this->color_id,
+            'color_names' => $this->color_names, // from accessor
+            'variants' => ProductVariantResource::collection($this->whenLoaded('variants')),
+            'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
+            'updated_at' => $this->updated_at?->format('Y-m-d H:i:s'),
         ];
     }
 }
