@@ -1,4 +1,5 @@
 <?php
+// app/Models/Color.php (Updated)
 
 namespace App\Models;
 
@@ -9,11 +10,24 @@ class Color extends Model
 {
     use HasFactory;
 
-   protected $fillable = ['color_name'];
+    protected $fillable = ['color_name'];
 
-    // One Color has many Products
     public function products()
     {
         return $this->hasMany(Product::class);
+    }
+
+    // Get total products count for this color
+    public function getProductsCountAttribute()
+    {
+        $products = Product::all();
+        $count = 0;
+        foreach ($products as $product) {
+            $colorIds = explode(',', $product->color_id);
+            if (in_array($this->id, $colorIds)) {
+                $count++;
+            }
+        }
+        return $count;
     }
 }
